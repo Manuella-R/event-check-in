@@ -1,0 +1,31 @@
+# The "legacy" setup: app + database on ONE machine. One box = one point of failure.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: checkin
+      POSTGRES_USER: checkin
+      POSTGRES_PASSWORD: checkin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U checkin -d checkin"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"   # remove/lock down on EC2; exposed here only for local debugging
+
+  app:
+    build: ./app
+    environment:
+      DB_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy   # wait until Postgres accepts connections
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
